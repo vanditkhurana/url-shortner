@@ -38,12 +38,47 @@ $ npm install
 # development
 $ npm run start
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
 ```
+
+Open [http://localhost:3000](http://localhost:3000) and take a look around.
+
+## APIs
+The REST API to the users app is described below.
+
+### 1. To shorten the url and add the entry in DB
+#### Request
+
+`POST /url/shorten`
+
+Mentioning the original url to shorten in request body
+
+#### Response
+ Short url of the original URL
+
+ ![image](https://github.com/vanditkhurana/url-shortner/assets/52314194/e36ea6b7-6705-4ea4-b4f8-67e491ba44ec)
+
+
+### 2. To retrieve the original url using the shorten url code
+#### Request
+
+`GET /url/:shortUrlCode`
+
+#### Response
+ Original URL as response for the shorten URL
+
+ ![image](https://github.com/vanditkhurana/url-shortner/assets/52314194/28b8e6ee-32c0-493f-9034-e407b3635dec)
+
+
+### 3. To get the analytics of the shorten url
+#### Request
+
+`GET /url/analytics/:shortUrlCode`
+
+#### Response
+ Analytics of the ahorten URL including various params such as clicks, referralSource, activeHours, devices and browsers.
+
+![image](https://github.com/vanditkhurana/url-shortner/assets/52314194/cf1a7eb4-1600-4220-a85f-b9b6469394d4)
+
 
 ## Test
 
@@ -51,11 +86,6 @@ $ npm run start:prod
 # unit tests
 $ npm run test
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
 ```
 
 ## Support
