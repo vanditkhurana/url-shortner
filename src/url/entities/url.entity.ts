@@ -15,6 +15,24 @@ export class Url extends Document {
 
   @Prop({ default: Date.now })
   createdAt: Date | undefined;
+
+  @Prop({
+    default: {
+      clicks: 0,
+      referralSources: [],
+      activeHours: [],
+      devices: [],
+      browsers: [],
+    },
+    type : Object,
+  })
+  analytics: {
+    clicks: number;
+    referralSources: string[];
+    activeHours: number[];
+    devices: string[];
+    browsers: string[];
+  };
 }
 
 export const UrlSchema = SchemaFactory.createForClass(Url);

@@ -62,7 +62,6 @@ describe('UrlService', () => {
 
       jest.spyOn(nanoid as any, 'nanoid').mockReturnValue(newUrlCode);
       jest.spyOn(service['urlModel'], 'findOne').mockResolvedValue(null);
-      jest.spyOn(service['urlModel'], 'save').mockResolvedValue({ urlCode: newUrlCode, shortUrl: newShortUrl });
 
       await expect(service.shortenUrl(newUrlDto)).resolves.toBe(newShortUrl);
     });

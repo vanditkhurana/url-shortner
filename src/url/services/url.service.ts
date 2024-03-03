@@ -29,7 +29,6 @@ export class UrlService {
     try {
 
       let url = await this.urlModel.findOne({ originalUrl: originalUrl});
-      console.log(url)
       
       if (url) return url.shortUrl;
 
@@ -52,10 +51,43 @@ export class UrlService {
   async redirect(urlCode: string) {
     try {
       const url = await this.urlModel.findOne({ urlCode : urlCode });
-      if (url) return url.originalUrl;
+      if (url) {
+        url.analytics.clicks++;
+      const { referralSource, activeHour, device, browser } = this.extractAnalyticsInfo();
+      url.analytics.referralSources.push(referralSource);
+      url.analytics.activeHours.push(activeHour);
+      url.analytics.devices.push(device);
+      url.analytics.browsers.push(browser);
+
+      await url.save();
+
+      return url.originalUrl;
+      }
     } catch (error) {
       console.log(error);
       throw new NotFoundException('Resource Not Found');
     }
+  }
+
+  async getAnalytics(urlCode: string) {
+    try {
+      const url = await this.urlModel.findOne({ urlCode });
+      if (url) {
+        return url.analytics;
+      }
+    } catch (error) {
+      console.log(error);
+      throw new NotFoundException('Resource Not Found');
+    }
+  }
+
+  extractAnalyticsInfo() {
+
+    return {
+      referralSource: 'direct', 
+      activeHour: new Date().getHours(), 
+      device: 'Desktop', 
+      browser: 'Chrome', 
+    };
   }
 }

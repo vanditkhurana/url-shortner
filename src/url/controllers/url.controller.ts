@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import { Controller, Post, Body, Redirect, Param, Get } from '@nestjs/common';
+import { Controller, Post, Body, Param, Get } from '@nestjs/common';
 import { UrlService } from '../services/url.service';
 import { UrlDto } from '../dtos/url.dto';
 
@@ -26,5 +26,10 @@ export class UrlController {
   async redirectUrl(@Param('urlCode') urlCode : string) {
     const originalUrl = await this.urlService.redirect(urlCode);
     return { url: originalUrl };
+  }
+
+  @Get('analytics/:urlCode')
+  async getAnalytics(@Param('urlCode') urlCode: string) {
+    return this.urlService.getAnalytics(urlCode);
   }
 }
