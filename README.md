@@ -42,6 +42,10 @@ $ npm run start
 
 Open [http://localhost:3000](http://localhost:3000) and take a look around.
 
+## Database
+
+Used MongoDB as a databse and Mongoose as ODM for the application.
+
 ## APIs
 The REST API to the users app is described below.
 
