@@ -5,6 +5,9 @@ import { Document } from 'mongoose';
 @Schema()
 export class Url extends Document {
   @Prop({ required: true })
+  urlCode: string | undefined;
+
+  @Prop({ required: true })
   originalUrl: string | undefined;
 
   @Prop({ required: true })

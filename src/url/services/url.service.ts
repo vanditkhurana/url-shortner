@@ -1,9 +1,16 @@
 /* eslint-disable prettier/prettier */
-import { Injectable } from '@nestjs/common';
+import { 
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Url } from '../entities/url.entity';
 import { UrlDto } from '../dtos/url.dto';
+import { nanoid } from 'nanoid';
+import { isURL } from 'class-validator';
 
 @Injectable()
 export class UrlService {
@@ -11,28 +18,44 @@ export class UrlService {
 
   async shortenUrl(urlDto: UrlDto): Promise<string> {
     const { originalUrl } = urlDto;
-    const shortUrl = this.generateShortUrl();
-    
-    const url = new this.urlModel({ originalUrl, shortUrl });
-    await url.save();
 
-    return shortUrl;
-  }
-
-  async getOriginalUrl(shortUrl: string): Promise<string | undefined> {
-    const url = await this.urlModel.findOne({ shortUrl });
-    return url ? url.originalUrl : '';
-  }
-
-  generateShortUrl(): string {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let shortUrl = '';
-
-    for (let i = 0; i < length; i++) {
-      const randomIndex = Math.floor(Math.random() * characters.length);
-      shortUrl += characters.charAt(randomIndex);
+    if (!isURL(originalUrl)) {
+      throw new BadRequestException('String Must be a Valid URL');
     }
 
-    return shortUrl;
+    const urlCode = nanoid(10);
+    const baseURL = 'https://shortmyurl';
+
+    try {
+
+      let url = await this.urlModel.findOne({ originalUrl: originalUrl});
+      console.log(url)
+      
+      if (url) return url.shortUrl;
+
+      const shortUrl = `${baseURL}/${urlCode}`;
+
+      url = new this.urlModel({
+        urlCode,
+        originalUrl,
+        shortUrl,
+      });
+
+      await url.save();
+      return url.shortUrl;
+    } catch (error) {
+      console.log(error);
+      throw new UnprocessableEntityException('Server Error');
+    }
+  }
+
+  async redirect(urlCode: string) {
+    try {
+      const url = await this.urlModel.findOne({ urlCode : urlCode });
+      if (url) return url.originalUrl;
+    } catch (error) {
+      console.log(error);
+      throw new NotFoundException('Resource Not Found');
+    }
   }
 }

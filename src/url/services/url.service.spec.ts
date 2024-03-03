@@ -1,14 +1,24 @@
 /* eslint-disable prettier/prettier */
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import { UrlService } from './url.service';
 import { Url } from '../entities/url.entity';
 import { UrlDto } from '../dtos/url.dto';
+import { BadRequestException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { nanoid } from 'nanoid';
+
+const mockUrlModel = {
+  findOne: jest.fn(),
+  save: jest.fn(),
+};
+
+jest.mock('@nestjs/mongoose', () => ({
+  InjectModel: jest.fn(() => ({})),
+  getModelToken: jest.fn(),
+}));
 
 describe('UrlService', () => {
-  let urlService: UrlService;
-  let urlModel: Model<Url>;
+  let service: UrlService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -16,70 +26,84 @@ describe('UrlService', () => {
         UrlService,
         {
           provide: getModelToken(Url.name),
-          useValue: {
-            new: jest.fn(),
-            constructor: jest.fn(),
-            find: jest.fn(),
-            findOne: jest.fn(),
-            create: jest.fn(),
-            save: jest.fn(),
-          },
+          useValue: mockUrlModel,
         },
       ],
     }).compile();
 
-    urlService = module.get<UrlService>(UrlService);
-    urlModel = module.get<Model<Url>>(getModelToken(Url.name));
-  });
-
-  it('should be defined', () => {
-    expect(urlService).toBeDefined();
+    service = module.get<UrlService>(UrlService);
   });
 
   describe('shortenUrl', () => {
-    it('should generate a short URL and save it', async () => {
-      const urlDto: UrlDto = { originalUrl: 'http://example.com' };
-      const expectedShortUrl = 'generatedShortUrl';
+    it('should throw BadRequestException for invalid URL', async () => {
+      const invalidUrlDto: UrlDto = { originalUrl: 'invalid-url' };
 
-      jest.spyOn(urlService, 'generateShortUrl').mockReturnValue(expectedShortUrl);
-      jest.spyOn(urlModel.prototype, 'save').mockResolvedValueOnce(undefined);
+      await expect(service.shortenUrl(invalidUrlDto)).rejects.toThrow(BadRequestException);
+    });
 
-      const result = await urlService.shortenUrl(urlDto);
+    it('should return shortUrl if originalUrl already exists', async () => {
+      const existingUrlDto: UrlDto = { originalUrl: 'https://existing-url.com' };
+      const existingUrl = {
+        urlCode: nanoid(10),
+        originalUrl: existingUrlDto.originalUrl,
+        shortUrl: 'https://shortmyurl/existing-code',
+      };
 
-      expect(result).toEqual(expectedShortUrl);
-      expect(urlModel.prototype.save).toHaveBeenCalledWith();
+      jest.spyOn(nanoid as any, 'nanoid').mockReturnValue(existingUrl.urlCode);
+      jest.spyOn(service['urlModel'], 'findOne').mockResolvedValue(existingUrl);
+
+      await expect(service.shortenUrl(existingUrlDto)).resolves.toBe(existingUrl.shortUrl);
+    });
+
+    it('should create and return shortUrl for a new originalUrl', async () => {
+      const newUrlDto: UrlDto = { originalUrl: 'https://new-url.com' };
+      const newUrlCode = 'new-url-code';
+      const newShortUrl = 'https://shortmyurl/new-url-code';
+
+      jest.spyOn(nanoid as any, 'nanoid').mockReturnValue(newUrlCode);
+      jest.spyOn(service['urlModel'], 'findOne').mockResolvedValue(null);
+      jest.spyOn(service['urlModel'], 'save').mockResolvedValue({ urlCode: newUrlCode, shortUrl: newShortUrl });
+
+      await expect(service.shortenUrl(newUrlDto)).resolves.toBe(newShortUrl);
+    });
+
+    it('should throw UnprocessableEntityException on server error', async () => {
+      const errorDto: UrlDto = { originalUrl: 'https://error-url.com' };
+
+      mockUrlModel.findOne.mockRejectedValue(new Error('Test error'));
+
+      await expect(service.shortenUrl(errorDto)).rejects.toThrow(UnprocessableEntityException);
     });
   });
 
-  describe('getOriginalUrl', () => {
-    it('should return the original URL based on short URL', async () => {
-      const shortUrl = 'sampleShortUrl';
-      const expectedOriginalUrl = 'http://example.com';
+  describe('redirect', () => {
+    it('should return originalUrl if urlCode exists', async () => {
+      const urlCode = 'existing-url-code';
+      const existingUrl = {
+        urlCode,
+        originalUrl: 'https://existing-url.com',
+        shortUrl: 'https://shortmyurl/existing-url-code',
+      };
 
-      jest.spyOn(urlModel, 'findOne').mockResolvedValueOnce({ originalUrl: expectedOriginalUrl });
+      mockUrlModel.findOne.mockResolvedValue(existingUrl);
 
-      const result = await urlService.getOriginalUrl(shortUrl);
-
-      expect(result).toEqual(expectedOriginalUrl);
-      expect(urlModel.findOne).toHaveBeenCalledWith({ shortUrl });
+      await expect(service.redirect(urlCode)).resolves.toBe(existingUrl.originalUrl);
     });
 
-    it('should return undefined if short URL is not found', async () => {
-      const shortUrl = 'nonexistentShortUrl';
+    it('should throw NotFoundException if urlCode does not exist', async () => {
+      const nonExistingCode = 'non-existing-url-code';
 
-      jest.spyOn(urlModel, 'findOne').mockResolvedValueOnce(null);
+      mockUrlModel.findOne.mockResolvedValue(null);
 
-      const result = await urlService.getOriginalUrl(shortUrl);
-
-      expect(result).toBeUndefined();
-      expect(urlModel.findOne).toHaveBeenCalledWith({ shortUrl });
+      await expect(service.redirect(nonExistingCode)).rejects.toThrow(NotFoundException);
     });
-  });
 
-  describe('generateShortUrl', () => {
-    it('should generate a random short URL', () => {
-      const result = urlService.generateShortUrl();
-      expect(result).toHaveLength(6); // Adjust the length based on your implementation
+    it('should throw NotFoundException on server error', async () => {
+      const errorUrlCode = 'error-url-code';
+
+      mockUrlModel.findOne.mockRejectedValue(new Error('Test error'));
+
+      await expect(service.redirect(errorUrlCode)).rejects.toThrow(NotFoundException);
     });
   });
 });

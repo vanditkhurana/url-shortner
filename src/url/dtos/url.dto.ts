@@ -1,4 +1,7 @@
 /* eslint-disable prettier/prettier */
+import { IsString, IsNotEmpty } from 'class-validator';
 export class UrlDto {
-    originalUrl: string | undefined;
-  }  
+  @IsString()
+  @IsNotEmpty()
+  originalUrl: string;
+}  

@@ -22,9 +22,9 @@ export class UrlController {
     return this.urlService.shortenUrl(urlDto);
   }
   
-  @Get(':shortUrl')
-  async redirectUrl(@Param('shortUrl') shortUrl: string) {
-    const originalUrl = await this.urlService.getOriginalUrl(shortUrl);
+  @Get(':urlCode')
+  async redirectUrl(@Param('urlCode') urlCode : string) {
+    const originalUrl = await this.urlService.redirect(urlCode);
     return { url: originalUrl };
   }
 }
